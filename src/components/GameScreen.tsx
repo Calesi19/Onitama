@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import {
   applyMove,
   applyPass,
@@ -12,7 +12,12 @@ import {
   type Pos,
 } from '../game/engine';
 import type { Player } from '../game/cards';
+import { MARKS } from '../art/generated';
+import { BrushRule, Piece, SchoolSeal, Torii } from '../art/marks';
+import { SCHOOL, squareName } from '../schools';
+import { useNightDojo } from '../theme';
 import CardView from './CardView';
+import { useDuelMotion } from './useDuelMotion';
 
 interface Props {
   onHome: () => void;
@@ -20,27 +25,67 @@ interface Props {
 
 const key = (p: Pos) => `${p.x},${p.y}`;
 
-function TempleMark({ color }: { color: string }) {
+/** Percent offsets for a mark placed on the board, from the top-left corner. */
+const cellStyle = (p: Pos) => ({ left: `${p.x * 20}%`, top: `${(4 - p.y) * 20}%` });
+
+function useModal() {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = ref.current;
+    if (dialog && !dialog.open) dialog.showModal();
+  }, []);
+  return ref;
+}
+
+function DuelMenu({ facing, onClose, onRestart, onHome }: { facing: Player; onClose: () => void; onRestart: () => void; onHome: () => void }) {
+  const ref = useModal();
+  const { night, toggle } = useNightDojo();
   return (
-    <svg className="temple-mark" viewBox="0 0 40 28" aria-hidden>
-      <path d="M4 6 Q20 -2 36 6 L34 10 Q20 3 6 10 Z" fill={color} />
-      <rect x="9" y="10" width="4" height="14" fill={color} />
-      <rect x="27" y="10" width="4" height="14" fill={color} />
-      <rect x="6" y="14" width="28" height="3" fill={color} />
-    </svg>
+    <dialog ref={ref} className="sheet" data-facing={facing} aria-label="Duel menu" onClose={onClose}>
+      <p className="sheet-title">The duel is paused</p>
+      <BrushRule variant="strokeB" className="sheet-rule" />
+      <button type="button" className="sheet-item" onClick={onClose}>Return to the table</button>
+      <button type="button" className="sheet-item" onClick={toggle}>{night ? 'Light the room' : 'Night dojo'}</button>
+      <button type="button" className="sheet-item" onClick={onRestart}>Begin anew</button>
+      <button type="button" className="sheet-item" onClick={onHome}>Leave the duel</button>
+    </dialog>
   );
 }
 
-function Pawn({ player, master }: { player: Player; master: boolean }) {
+function Rite({ game, onAgain, onHome }: { game: GameState; onAgain: () => void; onHome: () => void }) {
+  const ref = useModal();
+  const winner = game.winner!;
+  const stone = game.winKind === 'capture';
   return (
-    <div className={`pawn ${player}${master ? ' master' : ''}`}>
-      {master && (
-        <svg className="crown" viewBox="0 0 24 14" aria-hidden>
-          <path d="M2 12 L4 4 L8.5 9 L12 2 L15.5 9 L20 4 L22 12 Z" fill="currentColor" />
+    <dialog
+      ref={ref}
+      className="rite"
+      data-facing={winner}
+      aria-labelledby="rite-way"
+      aria-describedby="rite-line"
+      onCancel={(e) => e.preventDefault()}
+    >
+      <div className="rite-inner">
+        <svg className={`rite-seal rite-seal-${winner}`} viewBox="0 0 100 100" aria-hidden>
+          <path className="rite-face" d={winner === 'red' ? MARKS.sealRound : MARKS.seal} />
+          <path
+            className="rite-cut"
+            d={stone ? MARKS.stone : MARKS.stream}
+            transform="translate(23 23) scale(0.54)"
+          />
         </svg>
-      )}
-      <div className="pawn-face">{master ? '主' : ''}</div>
-    </div>
+        <p className="rite-school">{SCHOOL[winner]} prevails</p>
+        <h2 className="rite-way" id="rite-way">{stone ? 'Way of the Stone' : 'Way of the Stream'}</h2>
+        <p className="rite-line" id="rite-line">
+          {stone ? 'The enemy Master has fallen.' : 'The Master stands beneath the enemy Arch.'}
+        </p>
+        <BrushRule className="rite-rule" />
+        <div className="rite-actions">
+          <button type="button" className="btn btn-ink" onClick={onAgain}>Duel again</button>
+          <button type="button" className="btn btn-quiet" onClick={onHome}>Leave the table</button>
+        </div>
+      </div>
+    </dialog>
   );
 }
 
@@ -49,6 +94,17 @@ export default function GameScreen({ onHome }: Props) {
   const [selCard, setSelCard] = useState<string | null>(null);
   const [selFrom, setSelFrom] = useState<Pos | null>(null);
   const [lastMove, setLastMove] = useState<{ from: Pos; to: Pos } | null>(null);
+  const [menuFor, setMenuFor] = useState<Player | null>(null);
+  const [cursor, setCursor] = useState<Pos>({ x: 2, y: 0 });
+  const tableRef = useRef<HTMLDivElement>(null);
+  const motion = useDuelMotion(game, lastMove, tableRef);
+
+  // Each new game is a fresh deal: remounting replays the opening ink.
+  const deal = useRef({ count: 0, game });
+  if (game !== deal.current.game) {
+    if (game.plies === 0) deal.current.count += 1;
+    deal.current.game = game;
+  }
 
   const turn = game.turn;
   const moves = useMemo(() => legalMoves(game, turn), [game, turn]);
@@ -76,12 +132,14 @@ export default function GameScreen({ onHome }: Props) {
   }
 
   function doMove(move: Move) {
+    motion.snapshot();
     setGame(applyMove(game, move));
     setLastMove({ from: move.from, to: move.to });
     clearSelection();
   }
 
   function doPass(cardName: string) {
+    motion.snapshot();
     setGame(applyPass(game, cardName));
     setLastMove(null);
     clearSelection();
@@ -130,14 +188,22 @@ export default function GameScreen({ onHome }: Props) {
     clearSelection();
   }
 
+  function onBoardKey(e: KeyboardEvent<HTMLDivElement>) {
+    const step = { ArrowUp: [0, 1], ArrowDown: [0, -1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] }[e.key];
+    if (!step) return;
+    e.preventDefault();
+    const next = { x: Math.min(4, Math.max(0, cursor.x + step[0])), y: Math.min(4, Math.max(0, cursor.y + step[1])) };
+    setCursor(next);
+    e.currentTarget.querySelector<HTMLElement>(`[data-cell="${key(next)}"]`)?.focus();
+  }
+
   const status = (() => {
     if (game.winner) return '';
-    const name = turn === 'blue' ? 'Blue' : 'Red';
-    if (passNeeded) return `${name} has no legal moves — tap one of your cards to exchange it with the side card.`;
-    if (selCard && selFrom) return 'Tap a highlighted square to move.';
-    if (selCard) return `Now tap one of your pawns to move with ${selCard}.`;
-    if (selFrom) return 'Now tap the card to use for that pawn.';
-    return `${name} to move — tap a card or a pawn.`;
+    if (passNeeded) return 'No legal move: give up a card.';
+    if (selCard && selFrom) return 'Place it on an ink mark.';
+    if (selCard) return `${selCard}: now choose a piece.`;
+    if (selFrom) return 'Now choose its card.';
+    return 'Choose a card or a piece.';
   })();
 
   const capturedBy = (player: Player) => {
@@ -146,25 +212,28 @@ export default function GameScreen({ onHome }: Props) {
     return 5 - remaining;
   };
 
-  const playerPanel = (player: Player) => {
+  const seat = (player: Player) => {
     const isTurn = turn === player && !game.winner;
     const captured = capturedBy(player);
     return (
-      <div
-        className={`player-panel ${player}${isTurn ? ' active' : ''}`}
-        style={player === 'red' ? { transform: 'rotate(180deg)' } : undefined}
-      >
-        <div className="panel-label">
-          <span className={`dot ${player}`} />
-          {player === 'blue' ? 'Blue' : 'Red'}
-          {isTurn && <span className="to-move">to move</span>}
+      <section className={`seat seat-${player}${isTurn ? ' active' : ''}`} aria-label={`${SCHOOL[player]} school`}>
+        <div className="rail">
+          <SchoolSeal player={player} className="rail-seal" />
+          <p className="rail-text">
+            <span className="rail-school">{SCHOOL[player]}</span>
+            <span className="rail-status">{isTurn ? status : game.winner ? '' : 'Waits.'}</span>
+          </p>
           {captured > 0 && (
-            <span className="captured" title={`Captured ${captured} opposing pawn${captured > 1 ? 's' : ''}`}>
+            <span className="taken" role="img" aria-label={`${captured} taken`}>
               {Array.from({ length: captured }).map((_, i) => (
-                <span key={i} className={`mini-pawn ${opponent(player)}`} />
+                <SchoolSeal key={i} player={opponent(player)} className="taken-mark" />
               ))}
             </span>
           )}
+          <button type="button" className="rail-menu" aria-label="Open the duel menu" onClick={() => setMenuFor(player)}>
+            <span aria-hidden />
+          </button>
+          <BrushRule className="rail-rule" />
         </div>
         <div className="hand">
           {game.hands[player].map((cardName) => (
@@ -172,17 +241,21 @@ export default function GameScreen({ onHome }: Props) {
               key={cardName}
               name={cardName}
               holder={player}
+              flipped={player === 'red'}
               selected={isTurn && selCard === cardName}
-              usable={player !== turn ? false : passNeeded ? true : moves.some((m) => m.card === cardName)}
+              usable={player !== turn ? undefined : passNeeded ? true : moves.some((m) => m.card === cardName)}
               onClick={() => onCardTap(player, cardName)}
             />
           ))}
+          <div className="tray">
+            {turn === player && <CardView key={game.sideCard} name={game.sideCard} holder={player} flipped={player === 'red'} resting />}
+          </div>
         </div>
-      </div>
+      </section>
     );
   };
 
-  const rows = [];
+  const cells = [];
   for (let y = 4; y >= 0; y--) {
     for (let x = 0; x < 5; x++) {
       const pos = { x, y };
@@ -193,67 +266,87 @@ export default function GameScreen({ onHome }: Props) {
       const isSelected = selFrom && selFrom.x === x && selFrom.y === y;
       const isMovable = movablePawns.has(key(pos));
       const isLast = lastMove && ((lastMove.from.x === x && lastMove.from.y === y) || (lastMove.to.x === x && lastMove.to.y === y));
-      rows.push(
+      const contents = piece ? `${SCHOOL[piece.player]} ${piece.master ? 'Master' : 'Student'}` : 'empty';
+      const hint = dest ? (piece ? ' Take this piece.' : ' Move here.') : isSelected ? ' Selected.' : isMovable ? ' Can move.' : '';
+      cells.push(
         <button
           key={key(pos)}
           type="button"
-          className={`cell${isTemple ? ' temple' : ''}${isSelected ? ' selected' : ''}${isLast ? ' last' : ''}`}
+          data-cell={key(pos)}
+          tabIndex={cursor.x === x && cursor.y === y ? 0 : -1}
+          className={`cell${isTemple ? ` temple temple-${templeOwner}${piece ? ' held' : ''}` : ''}${isSelected ? ' selected' : ''}${isLast ? ' last' : ''}`}
           onClick={() => onSquareTap(pos)}
-          aria-label={`square ${x + 1},${y + 1}`}
+          onFocus={() => setCursor(pos)}
+          aria-label={`${squareName(pos)}${isTemple ? `, ${SCHOOL[templeOwner]} Temple Arch` : ''}: ${contents}.${hint}`}
         >
-          {isTemple && <TempleMark color={templeOwner === 'blue' ? 'var(--blue)' : 'var(--red)'} />}
-          {piece && <Pawn player={piece.player} master={piece.master} />}
-          {dest && <span className={`dest-marker${piece ? ' capture' : ''}`} />}
-          {!dest && isMovable && piece && !isSelected && <span className="movable-marker" />}
+          {isTemple && <Torii className="temple-arch" />}
+          {isSelected && (
+            <svg className="ring ring-chosen" viewBox="0 0 100 100" aria-hidden><path d={MARKS.enso} /></svg>
+          )}
+          {piece && <Piece player={piece.player} master={piece.master} />}
+          {dest && !piece && (
+            <svg className="blot" viewBox="0 0 100 100" aria-hidden><path d={MARKS.blot} /></svg>
+          )}
+          {dest && piece && (
+            <svg className="ring ring-take" viewBox="0 0 100 100" aria-hidden>
+              <path d={MARKS.enso} />
+              <path d={MARKS.enso} transform="rotate(150 50 50) translate(50 50) scale(0.62) translate(-50 -50)" />
+            </svg>
+          )}
+          {!dest && isMovable && piece && !isSelected && <span className="can-move" />}
         </button>,
       );
     }
   }
 
+  const live = selCard || selFrom ? status : motion.announcement || status;
+
   return (
-    <div className="game-screen">
-      <div className="game-topbar">
-        <button type="button" className="text-btn" onClick={onHome}>‹ Home</button>
-        <span className="game-title">ONITAMA</span>
-        <button type="button" className="text-btn" onClick={newGame}>Restart</button>
-      </div>
+    <div className={`duel${game.plies === 0 ? ' opening' : ''}`} key={deal.current.count} ref={tableRef}>
+      {seat('red')}
 
-      {playerPanel('red')}
-
-      <div className="table-row">
-        <div className="board">{rows}</div>
-        <div className="side-column">
-          <div className="side-label">Side card</div>
-          <CardView name={game.sideCard} holder={turn} flipped={turn === 'red'} />
-          <div className="side-note">goes to {turn === 'blue' ? 'Blue' : 'Red'}</div>
-        </div>
-      </div>
-
-      <div className={`status-bar ${turn}`} aria-live="polite">
-        <span className={`dot ${turn}`} />
-        {status}
-      </div>
-
-      {playerPanel('blue')}
-
-      {game.winner && (
-        <div className="win-overlay">
-          <div className="win-card">
-            <div className={`win-title ${game.winner}`}>
-              {game.winner === 'blue' ? 'Blue' : 'Red'} wins
-            </div>
-            <div className="win-kind">
-              {game.winKind === 'capture'
-                ? 'Way of the Stone — the opposing master was captured.'
-                : 'Way of the Stream — the master reached the opposing temple.'}
-            </div>
-            <div className="win-actions">
-              <button type="button" className="primary-btn" onClick={newGame}>Play again</button>
-              <button type="button" className="secondary-btn" onClick={onHome}>Home</button>
-            </div>
+      <div className="board" role="group" aria-label="Board, five by five. Arrow keys move between squares." onKeyDown={onBoardKey}>
+        <svg className="board-lines" viewBox="0 0 500 500" aria-hidden><path d={MARKS.grid} /></svg>
+        <div className="cells">{cells}</div>
+        {lastMove && (
+          <svg className="ink-path" viewBox="0 0 5 5" aria-hidden key={`${key(lastMove.from)}-${key(lastMove.to)}-${game.plies}`}>
+            <path
+              pathLength={1}
+              d={`M${lastMove.from.x + 0.5} ${4.5 - lastMove.from.y}L${lastMove.to.x + 0.5} ${4.5 - lastMove.to.y}`}
+            />
+          </svg>
+        )}
+        {motion.capture && (
+          <div className="taken-fx" style={cellStyle(motion.capture.at)} key={motion.capture.id} onAnimationEnd={(e) => e.target === e.currentTarget && motion.clearCapture()}>
+            <svg className="splash" viewBox="0 0 100 100" aria-hidden><path d={MARKS.splash} /></svg>
+            <Piece player={motion.capture.piece.player} master={motion.capture.piece.master} />
           </div>
-        </div>
+        )}
+      </div>
+
+      {seat('blue')}
+
+      {motion.trail && (
+        <svg className="trail" aria-hidden key={motion.trail.id}>
+          <path pathLength={1} d={motion.trail.d} onAnimationEnd={motion.clearTrail} />
+        </svg>
       )}
+
+      <p className="sr-only" aria-live="polite">{live}</p>
+
+      {menuFor && (
+        <DuelMenu
+          facing={menuFor}
+          onClose={() => setMenuFor(null)}
+          onRestart={() => {
+            setMenuFor(null);
+            newGame();
+          }}
+          onHome={onHome}
+        />
+      )}
+
+      {game.winner && <Rite game={game} onAgain={newGame} onHome={onHome} />}
     </div>
   );
 }

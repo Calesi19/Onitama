@@ -1,13 +1,33 @@
 // Hand-rolled service worker: cache-first for same-origin requests so the
 // game works fully offline after the first load. Bump CACHE_VERSION to
 // invalidate old caches on deploy.
-const CACHE_VERSION = 'onitama-v1';
-const CORE_ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
+const CACHE_VERSION = 'onitama-v2';
+const CORE_ASSETS = [
+  './',
+  './index.html',
+  './manifest.webmanifest',
+  './icon.svg',
+  './icon-192.png',
+  './icon-512.png',
+  './icon-maskable-512.png',
+  './fonts/shippori-mincho-500.woff2',
+  './fonts/shippori-mincho-700.woff2',
+  './fonts/zen-kaku-gothic-new-400.woff2',
+  './fonts/zen-kaku-gothic-new-700.woff2',
+];
+
+// The built script and stylesheet have hashed names, so read them from the
+// page. Without this they would only be cached on the second visit.
+async function precache() {
+  const cache = await caches.open(CACHE_VERSION);
+  await cache.addAll(CORE_ASSETS);
+  const page = await (await cache.match('./index.html')).text();
+  const built = [...page.matchAll(/(?:src|href)="(\.\/assets\/[^"]+)"/g)].map((m) => m[1]);
+  await cache.addAll(built);
+}
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_VERSION).then((cache) => cache.addAll(CORE_ASSETS)).then(() => self.skipWaiting()),
-  );
+  event.waitUntil(precache().then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (event) => {
