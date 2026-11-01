@@ -1,12 +1,13 @@
 // Hand-rolled service worker: cache-first for same-origin requests so the
 // game works fully offline after the first load. Bump CACHE_VERSION to
 // invalidate old caches on deploy.
-const CACHE_VERSION = 'onitama-v2';
+const CACHE_VERSION = 'onitama-v3';
 const CORE_ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
   './icon.svg',
+  './apple-touch-icon.png',
   './icon-192.png',
   './icon-512.png',
   './icon-maskable-512.png',
