@@ -116,7 +116,8 @@ function Rules({ onBack, onPlay }: { onBack: () => void; onPlay: () => void }) {
         <h2><span>Six</span> Sitting down</h2>
         <p>
           Lay the phone flat between two players. Each school's cards and messages face the player sitting on that
-          side. A duel takes about ten minutes.
+          side. On a computer the screen stays upright instead, and only the dots on Vermilion's cards are turned, to
+          match the way it moves. A duel takes about ten minutes.
         </p>
       </section>
 

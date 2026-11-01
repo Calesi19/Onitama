@@ -756,6 +756,10 @@ button {
   fill: var(--card-ink);
 }
 
+.card-dots {
+  transform-origin: 25px 25px;
+}
+
 .card-speck {
   fill: var(--card-soft);
 }
@@ -1303,6 +1307,7 @@ dialog {
 
 @media (min-aspect-ratio: 11/10) {
   .duel {
+    --rail: 54px;
     --height: min(100vh - var(--edge-top) - var(--edge-bottom), 860px);
     --card-h: calc((var(--height) - var(--rail) - 2 * 6px - var(--gap)) / 3);
     --seat-w: clamp(var(--card-h) * 0.9, (100vw - var(--height)) / 2 - 30px, min(var(--card-h) * 2, 230px));
@@ -1330,6 +1335,16 @@ dialog {
 
   .rail-status {
     font-size: 0.8125rem;
+    white-space: normal;
+  }
+
+  .rail {
+    gap: 6px;
+  }
+
+  .rail-seal {
+    width: 20px;
+    height: 20px;
   }
 
   .seat-red {
@@ -1430,6 +1445,27 @@ dialog {
   .home-body {
     position: relative;
     z-index: 1;
+  }
+}
+
+/* ---------- computers: one person, one upright screen ----------
+   Nothing turns to face Vermilion. Its moves still run down the board, so the
+   dots on its cards turn while the card itself stays readable. */
+
+@media (hover: hover) and (pointer: fine) {
+  .card[data-facing='red'] {
+    --turn: 0deg;
+  }
+
+  .card[data-facing='red'] .card-dots {
+    rotate: 180deg;
+  }
+
+  .seat-red .rail,
+  .temple-red .temple-arch,
+  .sheet[data-facing='red'],
+  .rite[data-facing='red'] {
+    rotate: none;
   }
 }
 

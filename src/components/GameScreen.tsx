@@ -203,7 +203,7 @@ export default function GameScreen({ onHome }: Props) {
     if (selCard && selFrom) return 'Place it on an ink mark.';
     if (selCard) return `${selCard}: now choose a piece.`;
     if (selFrom) return 'Now choose its card.';
-    return 'Choose a card or a piece.';
+    return 'Choose a card or piece.';
   })();
 
   const capturedBy = (player: Player) => {

@@ -27,6 +27,9 @@ export interface CardTrail {
 
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+/** Matches the computers block in index.css: cards stay upright, only their dots turn. */
+const uprightTable = () => window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+
 const centre = (r: DOMRect) => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
 
 export function useDuelMotion(game: GameState, lastMove: { from: Pos; to: Pos } | null, root: RefObject<HTMLElement>) {
@@ -104,9 +107,10 @@ export function useDuelMotion(game: GameState, lastMove: { from: Pos; to: Pos } 
       const facingRed = el.dataset.facing === 'red';
       // The used card makes a half turn on its way across; the waiting card
       // is already facing its new holder and only slides.
-      const endTurn = facingRed ? 180 : crossing ? 360 : 0;
+      const upright = uprightTable();
+      const endTurn = upright ? 0 : facingRed ? 180 : crossing ? 360 : 0;
       const tilt = el.classList.contains('resting') ? REST_TILT : 0;
-      const startTurn = crossing ? endTurn - 180 : endTurn + REST_TILT;
+      const startTurn = crossing ? endTurn - (upright ? 0 : 180) : endTurn + REST_TILT;
       const delay = crossing ? CARD_DELAY_MS : CARD_DELAY_MS + 60;
       const dx = a.x - b.x;
       const dy = a.y - b.y;
@@ -137,6 +141,14 @@ export function useDuelMotion(game: GameState, lastMove: { from: Pos; to: Pos } 
         fill: 'backwards',
       });
       flight.onfinish = () => (el.style.zIndex = '');
+
+      if (crossing && upright) {
+        // The card can't turn here, so its technique does.
+        el.querySelector('.card-dots')?.animate(
+          { rotate: facingRed ? ['0deg', '180deg'] : ['180deg', '360deg'] },
+          { duration: CARD_MS, delay, easing: EASE_TRAVEL, fill: 'backwards' },
+        );
+      }
 
       if (crossing) {
         // A brushed line across the table, so the eye can follow the card.

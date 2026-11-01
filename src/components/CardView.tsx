@@ -21,7 +21,8 @@ interface Props {
  * 5x5 field of ink dots. The open ring is the piece; filled dots are where it
  * can go, drawn in the card's canonical orientation (forward = up on the card).
  * When the card sits on red's side of the table the whole card is flipped,
- * exactly like the physical game.
+ * exactly like the physical game. On a computer, where one person faces the
+ * screen, the card stays upright and only its dots turn (see index.css).
  */
 export default function CardView({ name, holder, flipped, selected, usable, resting, onClick }: Props) {
   const card = getCard(name);
@@ -65,7 +66,7 @@ export default function CardView({ name, holder, flipped, selected, usable, rest
       <span className="card-name">{name}</span>
       <SchoolSeal player={card.stamp} className="card-seal" />
       <svg className="card-field" viewBox="0 0 50 50" aria-hidden>
-        {dots}
+        <g className="card-dots">{dots}</g>
       </svg>
       {resting && <span className="card-next">Next</span>}
     </>

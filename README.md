@@ -28,8 +28,9 @@ side card whose stamp colour decides who starts.
   of your cards with the side card without moving (official rule).
 
 Indigo (`blue` in the engine) plays from the bottom of the screen; Vermilion
-(`red`) plays from the top, with its cards and messages turned 180° to face
-that player, just like the physical game.
+(`red`) plays from the top. On a touch device its cards and messages are turned
+180° to face that player, just like the physical game. On a computer the UI
+stays upright, and only the dots on Vermilion's cards turn to match its moves.
 
 ## Card data source
 
