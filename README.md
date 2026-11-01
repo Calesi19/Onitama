@@ -1,3 +1,5 @@
+<img src="docs/banner.png" alt="Onitama: a red torii on the shore of an ink-wash island, with the line 'What you use, your rival inherits.'" width="100%" />
+
 # Onitama
 
 A pass-and-play hotseat implementation of the Onitama board game: a single
