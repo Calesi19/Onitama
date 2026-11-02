@@ -156,17 +156,25 @@ html,
 body {
   margin: 0;
   padding: 0;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
+/* Pinned so iOS has no document to rubber-band; each screen fills the viewport. */
 body {
-  min-height: 100vh;
-  min-height: 100dvh;
+  position: fixed;
+  inset: 0;
   font-family: var(--text);
   font-size: 1rem;
   line-height: 1.6;
   color: var(--ink);
   background: var(--grain), var(--paper);
   -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  height: 100%;
 }
 
 button {
@@ -272,8 +280,8 @@ button {
 
 .home {
   position: relative;
-  min-height: 100vh;
-  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -311,7 +319,8 @@ button {
   margin: 0;
   font-family: var(--display);
   font-weight: 500;
-  font-size: clamp(3.75rem, 21vw, 7.5rem);
+  font-size: min(clamp(3.75rem, 21vw, 7.5rem), 15vh);
+  font-size: min(clamp(3.75rem, 21vw, 7.5rem), 15dvh);
   line-height: 1;
   letter-spacing: -0.02em;
   margin-left: -0.04em;
@@ -349,8 +358,8 @@ button {
 }
 
 .island {
-  flex: 1 1 auto;
-  min-height: 112px;
+  flex: 1 1 0;
+  min-height: 0;
   width: 100%;
   margin-top: 12px;
   display: block;
@@ -386,42 +395,100 @@ button {
 
 /* ---------- rules ---------- */
 
-.scroll {
+.rules {
   width: 100%;
   max-width: 36rem;
+  height: 100vh;
+  height: 100dvh;
   margin: 0 auto;
-  padding: calc(8px + var(--safe-top)) max(20px, var(--safe-right)) calc(32px + var(--safe-bottom)) max(20px, var(--safe-left));
-}
-
-.scroll-top {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  padding-top: calc(8px + var(--safe-top));
 }
 
-.scroll-title {
-  margin: 20px 0 0;
+.rules-top,
+.rules-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-left: max(20px, var(--safe-left));
+  padding-right: max(20px, var(--safe-right));
+}
+
+.rules-pages {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior: none;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.rules-pages::-webkit-scrollbar {
+  display: none;
+}
+
+/* A page only scrolls if it truly cannot fit: a short landscape phone or very large text. */
+.rules-page {
+  flex: 0 0 100%;
+  min-width: 0;
+  overflow-y: auto;
+  overscroll-behavior: none;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  padding: 12px max(20px, var(--safe-right)) 12px max(20px, var(--safe-left));
+}
+
+.rules-foot {
+  padding-top: 8px;
+  padding-bottom: calc(14px + var(--safe-bottom));
+  box-shadow: 0 -1px 0 var(--ink-trace);
+}
+
+.rules-foot .link-btn:disabled {
+  visibility: hidden;
+}
+
+.rules-count {
+  margin: 0;
+  font-size: 0.8125rem;
+  letter-spacing: 0.03em;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.rules-next {
+  min-width: 9.5rem;
+  min-height: 46px;
+  padding: 8px 16px;
+  font-size: 1rem;
+}
+
+.rules-title {
+  margin: 0;
   font-family: var(--display);
   font-weight: 500;
-  font-size: clamp(2.5rem, 11vw, 3.5rem);
+  font-size: clamp(2.25rem, 10vw, 3.5rem);
   line-height: 1.08;
   letter-spacing: -0.015em;
 }
 
-.scroll-lead {
-  margin: 14px 0 0;
-  font-size: 1.125rem;
+.rules-lead {
+  margin: 10px 0 0;
+  font-size: 1.0625rem;
+  line-height: 1.5;
   color: var(--ink-soft);
 }
 
-.scroll-rule {
-  margin-top: 22px;
+.rules-rule {
+  margin: 14px 0 20px;
 }
 
-.scroll-part {
-  margin-top: 36px;
-}
-
-.scroll-part h2 {
+.rules-page h2 {
   margin: 0 0 12px;
   font-family: var(--display);
   font-size: 1.5rem;
@@ -429,7 +496,7 @@ button {
   line-height: 1.25;
 }
 
-.scroll-part h2 span {
+.rules-page h2 span {
   display: block;
   font-family: var(--text);
   font-size: 0.75rem;
@@ -439,7 +506,7 @@ button {
   color: var(--shu);
 }
 
-.scroll-part p {
+.rules-page p {
   margin: 0 0 12px;
 }
 
@@ -517,11 +584,6 @@ button {
 
 .turn-demo p {
   margin: 0;
-}
-
-.scroll-play {
-  width: 100%;
-  margin-top: 24px;
 }
 
 /* ---------- the table ---------- */
@@ -1136,8 +1198,8 @@ dialog {
 
 .rite-seal {
   display: block;
-  width: min(44vw, 168px);
-  height: min(44vw, 168px);
+  width: min(44vw, 24vh, 168px);
+  height: min(44vw, 24vh, 168px);
   margin: 0 auto 18px;
   animation: stamp-large var(--slow) cubic-bezier(0.55, 0, 0.45, 1) 960ms both;
 }
@@ -1303,6 +1365,80 @@ dialog {
   }
 }
 
+/* ---------- short phones and phones on their side ---------- */
+
+@media (max-height: 620px) {
+  .rules-page {
+    padding-top: 8px;
+    padding-bottom: 8px;
+    font-size: 0.9375rem;
+  }
+
+  .rules-title {
+    font-size: 2rem;
+  }
+
+  .rules-lead {
+    margin-top: 6px;
+    font-size: 1rem;
+  }
+
+  .rules-rule {
+    margin: 10px 0 12px;
+  }
+
+  .rules-page h2 {
+    margin-bottom: 8px;
+    font-size: 1.3125rem;
+  }
+
+  .rules-page p {
+    margin-bottom: 8px;
+  }
+
+  .way svg {
+    width: 44px;
+    height: 44px;
+  }
+
+  .turn-demo .card {
+    height: 132px;
+  }
+}
+
+@media (min-aspect-ratio: 11/10) and (max-height: 520px) {
+  .rite-inner {
+    width: min(100vw - 40px, 34rem);
+    padding: 14px 22px;
+  }
+
+  .rite-seal {
+    width: 72px;
+    height: 72px;
+    margin-bottom: 8px;
+  }
+
+  .rite-way {
+    font-size: 1.75rem;
+  }
+
+  .rite-line {
+    margin-top: 4px;
+  }
+
+  .rite-rule {
+    margin: 8px auto;
+  }
+
+  .rite-actions {
+    flex-direction: row;
+  }
+
+  .rite-actions .btn {
+    flex: 1;
+  }
+}
+
 /* ---------- landscape and large screens: the seats move to the flanks ---------- */
 
 @media (min-aspect-ratio: 11/10) {
@@ -1391,22 +1527,41 @@ dialog {
   }
 }
 
-@media (min-aspect-ratio: 11/10) and (max-height: 480px) {
+@media (min-aspect-ratio: 11/10) and (max-height: 520px) {
+  .home-top {
+    padding-top: 6px;
+  }
+
   .home-body {
-    padding-top: 4px;
+    max-width: none;
+    padding-top: 2px;
+    display: grid;
+    grid-template-columns: 1fr minmax(13rem, 18rem);
+    column-gap: 32px;
   }
 
   .home-title {
-    font-size: 3.5rem;
+    grid-column: 1;
+    font-size: 3.25rem;
+  }
+
+  .home-rule {
+    grid-column: 1;
+    margin-top: 8px;
+    height: 9px;
   }
 
   .home-lead {
+    grid-column: 1;
     margin-top: 8px;
     font-size: 1rem;
   }
 
   .home-actions {
-    margin-top: 10px;
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    align-self: center;
+    margin-top: 0;
   }
 
   .home-actions .btn {
@@ -1414,8 +1569,8 @@ dialog {
     padding-block: 6px;
   }
 
-  .island {
-    display: none;
+  .home-foot {
+    padding-bottom: calc(8px + var(--safe-bottom));
   }
 }
 
