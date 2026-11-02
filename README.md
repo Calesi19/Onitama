@@ -1,4 +1,4 @@
-<img src="docs/banner.png" alt="Onitama: a red torii on the shore of an ink-wash island, with the line 'What you use, your rival inherits.'" width="100%" />
+![Onitama banner](docs/banner.webp)
 
 # Onitama
 
